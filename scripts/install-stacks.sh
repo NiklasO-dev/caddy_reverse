@@ -25,16 +25,25 @@ if [[ ! -d "${STACKS_SRC}" ]]; then
   error "Missing stacks directory: ${STACKS_SRC}"
 fi
 
-TEMPLATE="${STACKS_SRC}/caddy/Caddyfile.example"
-if [[ ! -f "${TEMPLATE}" ]]; then
-  error "Missing ${TEMPLATE}"
+GLOBAL_TEMPLATE="${STACKS_SRC}/caddy/Caddyfile.example"
+if [[ ! -f "${GLOBAL_TEMPLATE}" ]]; then
+  error "Missing ${GLOBAL_TEMPLATE}"
 fi
+
+GENERATE_SCRIPT="${REPO_ROOT}/scripts/generate-caddyfile.sh"
+chmod +x "${GENERATE_SCRIPT}"
 
 info "Installing stacks to ${STACKS_DEST}..."
 
-for stack in uptime-kuma dozzle dockge; do
+# Copy bundled stacks from git. Manual stacks on the server (not in git) are kept;
+# Caddy generation scans every folder under STACKS_DEST that has compose.yml.
+for stack_dir in "${STACKS_SRC}"/*/; do
+  [[ -d "${stack_dir}" ]] || continue
+  stack="$(basename "${stack_dir}")"
+  [[ "${stack}" == "caddy" ]] && continue
+
   install -d "${STACKS_DEST}/${stack}"
-  for f in compose.yml .env.example; do
+  for f in compose.yml caddy.env .env.example caddy.env.example; do
     if [[ -f "${STACKS_SRC}/${stack}/${f}" ]]; then
       cp -f "${STACKS_SRC}/${stack}/${f}" "${STACKS_DEST}/${stack}/${f}"
     fi
@@ -43,12 +52,27 @@ done
 
 install -d "${STACKS_DEST}/caddy"
 cp -f "${STACKS_SRC}/caddy/compose.yml" "${STACKS_DEST}/caddy/compose.yml"
-cp -f "${TEMPLATE}" "${STACKS_DEST}/caddy/Caddyfile.example"
+cp -f "${GLOBAL_TEMPLATE}" "${STACKS_DEST}/caddy/Caddyfile.example"
 
 export ACME_EMAIL APPS_DOMAIN CADDY_BASIC_AUTH_USER CADDY_BASIC_AUTH_HASH
 
-envsubst '${ACME_EMAIL} ${APPS_DOMAIN} ${CADDY_BASIC_AUTH_USER} ${CADDY_BASIC_AUTH_HASH}' \
-  < "${TEMPLATE}" > "${STACKS_DEST}/caddy/Caddyfile"
+info "Generating Caddy site blocks from ${STACKS_DEST}..."
+SITES_FILE="$(mktemp)"
+if ! STACKS_DEST="${STACKS_DEST}" bash "${GENERATE_SCRIPT}" > "${SITES_FILE}"; then
+  rm -f "${SITES_FILE}"
+  error "Caddy generation failed — fix caddy.env / compose.yml in stack folders"
+fi
+
+mapfile -t HOSTNAMES < <(grep -oE '^[a-zA-Z0-9][a-zA-Z0-9-]*\.\$\{APPS_DOMAIN\}' "${SITES_FILE}" \
+  | sed -E 's/\.\\$\{APPS_DOMAIN\}//' || true)
+
+{
+  envsubst '${ACME_EMAIL} ${APPS_DOMAIN} ${CADDY_BASIC_AUTH_USER} ${CADDY_BASIC_AUTH_HASH}' \
+    < "${GLOBAL_TEMPLATE}"
+  envsubst '${ACME_EMAIL} ${APPS_DOMAIN} ${CADDY_BASIC_AUTH_USER} ${CADDY_BASIC_AUTH_HASH}' \
+    < "${SITES_FILE}"
+} > "${STACKS_DEST}/caddy/Caddyfile"
+rm -f "${SITES_FILE}"
 
 chmod 644 "${STACKS_DEST}/caddy/Caddyfile"
 
@@ -58,14 +82,13 @@ if [[ -f "${STACKS_DEST}/dockge/.env.example" && ! -f "${STACKS_DEST}/dockge/.en
 fi
 
 if command -v docker &>/dev/null; then
-  for stack in caddy uptime-kuma dozzle dockge; do
-    compose_file="${STACKS_DEST}/${stack}/compose.yml"
-    if [[ -f "${compose_file}" ]]; then
-      docker compose -f "${compose_file}" config -q
-    fi
-  done
+  while IFS= read -r -d '' compose_file; do
+    docker compose -f "${compose_file}" config -q
+  done < <(find "${STACKS_DEST}" -mindepth 2 -maxdepth 2 -name compose.yml -print0)
   info "Compose files validated."
 fi
 
 info "Rendered ${STACKS_DEST}/caddy/Caddyfile for *.${APPS_DOMAIN}"
-info "Services: kuma.${APPS_DOMAIN}, dozzle.${APPS_DOMAIN}, dockge.${APPS_DOMAIN}"
+if [[ ${#HOSTNAMES[@]} -gt 0 ]]; then
+  info "Services: $(printf '%s.%s, ' "${HOSTNAMES[@]}" "${APPS_DOMAIN}" | sed 's/, $//')"
+fi
