@@ -118,7 +118,14 @@ if ! sshd -t; then
   rm -f /etc/ssh/sshd_config.d/99-hardened.conf
   error "SSH config validation failed — backup restored. Fix manually before re-running."
 fi
-systemctl restart sshd
+# Debian/Ubuntu: ssh.service — RHEL/Fedora: sshd.service
+if systemctl cat ssh.service &>/dev/null; then
+  systemctl restart ssh.service
+elif systemctl cat sshd.service &>/dev/null; then
+  systemctl restart sshd.service
+else
+  error "Neither ssh.service nor sshd.service found — restart OpenSSH manually."
+fi
 info "SSH now listens on port ${SSH_PORT}. Root login disabled."
 
 ###############################################################################
