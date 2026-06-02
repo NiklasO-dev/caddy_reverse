@@ -241,6 +241,7 @@ caddy_reverse/
 | Caddy won't start | Caddyfile syntax — `docker logs caddy`; `sudo update-stacks`. |
 | Prompt for password on every install | Save `CADDY_BASIC_AUTH_HASH='...'` in `setup.env`. |
 | Locked out after `setup_v2.sh` | Provider console; restore SSH from `.bak.*` or remove `sshd_config.d/99-hardened.conf`. |
+| `SSH_PORT` closed, port 22 filtered (Ubuntu 24.04) | `sshd_config` can say `Port 2222` while `ssh.socket` still listens on 22 — on the server: `systemctl restart ssh.socket ssh` (current `setup_v2.sh` configures the socket automatically). |
 | `permission denied` on docker | Use **deploy** (created by `setup_v2.sh`; in the `docker` group). |
 
 ## License

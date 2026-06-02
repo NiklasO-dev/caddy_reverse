@@ -118,6 +118,21 @@ if ! sshd -t; then
   rm -f /etc/ssh/sshd_config.d/99-hardened.conf
   error "SSH config validation failed — backup restored. Fix manually before re-running."
 fi
+
+# Ubuntu 22.10+ (incl. 24.04): ssh.socket owns the listen port; Port in sshd_config
+# alone often leaves sshd on 22 until ssh.socket is updated (see: systemctl status ssh).
+if systemctl cat ssh.socket &>/dev/null; then
+  info "Configuring ssh.socket for port ${SSH_PORT}..."
+  mkdir -p /etc/systemd/system/ssh.socket.d
+  cat > /etc/systemd/system/ssh.socket.d/99-hardened-port.conf <<EOF
+[Socket]
+ListenStream=
+ListenStream=${SSH_PORT}
+EOF
+  systemctl daemon-reload
+  systemctl restart ssh.socket
+fi
+
 # Debian/Ubuntu: ssh.service — RHEL/Fedora: sshd.service
 if systemctl cat ssh.service &>/dev/null; then
   systemctl restart ssh.service
@@ -125,6 +140,10 @@ elif systemctl cat sshd.service &>/dev/null; then
   systemctl restart sshd.service
 else
   error "Neither ssh.service nor sshd.service found — restart OpenSSH manually."
+fi
+
+if ! ss -tlnp 2>/dev/null | grep -qE ":${SSH_PORT}[[:space:]]"; then
+  error "SSH is not listening on port ${SSH_PORT} after restart — check ssh.socket and sshd_config."
 fi
 info "SSH now listens on port ${SSH_PORT}. Root login disabled."
 
