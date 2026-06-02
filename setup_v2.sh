@@ -478,6 +478,18 @@ docker system prune -af --filter "until=168h"
 SCRIPT
 chmod +x /etc/cron.weekly/docker-cleanup
 
+# Repos under /root are owned by deploy but not reachable (/root is mode 700).
+REPO_INSTALL_DIR="${REPO_INSTALL_DIR:-/opt/caddy_reverse}"
+if [[ "${REPO_ROOT}" == /root/* ]] && [[ "${REPO_ROOT}" != "${REPO_INSTALL_DIR}" ]]; then
+  if [[ -e "${REPO_INSTALL_DIR}" ]]; then
+    warn "Not moving repo: ${REPO_INSTALL_DIR} already exists (remove or merge manually)."
+  else
+    info "Moving repository ${REPO_ROOT} → ${REPO_INSTALL_DIR}..."
+    mv "${REPO_ROOT}" "${REPO_INSTALL_DIR}"
+    REPO_ROOT="${REPO_INSTALL_DIR}"
+  fi
+fi
+
 cat > /usr/local/bin/update-stacks <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
@@ -501,6 +513,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "  ${GREEN}SSH User:${NC}       ${NEW_USER}"
 echo -e "  ${GREEN}SSH Port:${NC}       ${SSH_PORT}"
+echo -e "  ${GREEN}Repo dir:${NC}       ${REPO_ROOT}"
 echo -e "  ${GREEN}Stacks dir:${NC}     /opt/stacks/"
 echo -e "  ${GREEN}Docker network:${NC} caddy_net (external in each compose.yml)"
 echo -e "  ${GREEN}App template:${NC}    /opt/stacks/_template/compose.yml"

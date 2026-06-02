@@ -5,7 +5,7 @@
 #   sudo bash scripts/install-stacks.sh
 #
 # After git pull, re-run to refresh compose files and re-render the Caddyfile:
-#   cd ~/caddy_reverse && git pull && sudo bash scripts/install-stacks.sh
+#   cd /opt/caddy_reverse && git pull && sudo bash scripts/install-stacks.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

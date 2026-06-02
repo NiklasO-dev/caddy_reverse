@@ -38,7 +38,7 @@ apt-get update && apt-get install -y git
 
 or run `setup_v2.sh` only **after** cloning — the script’s first step installs `git`, `nano`, `vim`, `curl`, and `gettext-base` (needed for `envsubst` when rendering the Caddyfile).
 
-**Recommended order** (clone first, then run setup):
+**Recommended order** (clone first, then run setup). Clone under **`/opt/caddy_reverse`**, not `/root/...`: after setup, the repo is owned by `deploy`, but `/root` stays mode `700`, so `deploy` cannot `cd` into a path under `/root`.
 
 ```bash
 ssh root@your-vps-ip
@@ -46,8 +46,8 @@ ssh root@your-vps-ip
 # If git is missing on the image:
 apt-get update && apt-get install -y git
 
-git clone <this-repo-url> ~/caddy_reverse
-cd ~/caddy_reverse
+git clone <this-repo-url> /opt/caddy_reverse
+cd /opt/caddy_reverse
 
 cp setup.env.example setup.env
 nano setup.env    # or vim; or edit locally and scp (see below)
@@ -58,7 +58,7 @@ Fill in at least: `APPS_DOMAIN`, `ACME_EMAIL`, `SSH_PUBLIC_KEYS`, and optionally
 Alternative: edit `setup.env` on your laptop and copy it to the server:
 
 ```bash
-scp -P 22 setup.env root@your-vps-ip:~/caddy_reverse/setup.env
+scp -P 22 setup.env root@your-vps-ip:/opt/caddy_reverse/setup.env
 ```
 
 ### Step 4 as root (`setup_v2.sh`)
@@ -66,7 +66,7 @@ scp -P 22 setup.env root@your-vps-ip:~/caddy_reverse/setup.env
 Still on the **root** session, from the repo directory:
 
 ```bash
-cd ~/caddy_reverse
+cd /opt/caddy_reverse
 bash setup_v2.sh
 ```
 
@@ -118,7 +118,7 @@ Visit `https://kuma.<APPS_DOMAIN>`, `https://dozzle.<APPS_DOMAIN>`, `https://doc
 | Task | User |
 |------|------|
 | `docker compose up/down`, `docker ps`, `docker logs` | **deploy** (docker group) |
-| `git pull` in `~/caddy_reverse` | **deploy** (owns the repo after `setup_v2.sh`) |
+| `git pull` in `/opt/caddy_reverse` | **deploy** (owns the repo after `setup_v2.sh`) |
 | `sudo update-stacks` / `sudo bash scripts/install-stacks.sh` | **deploy** (writes `/opt/stacks`; needs sudo) |
 | `setup_v2.sh` again | **root** only via provider console (root SSH is disabled) |
 
@@ -176,7 +176,7 @@ Committed templates are rendered on the server; generated files are not in git:
 **As deploy**, after `git pull`:
 
 ```bash
-cd ~/caddy_reverse
+cd /opt/caddy_reverse
 git pull
 sudo update-stacks
 cd /opt/stacks/caddy && docker compose restart
@@ -242,6 +242,7 @@ caddy_reverse/
 | Prompt for password on every install | Save `CADDY_BASIC_AUTH_HASH='...'` in `setup.env`. |
 | Locked out after `setup_v2.sh` | Provider console; restore SSH from `.bak.*` or remove `sshd_config.d/99-hardened.conf`. |
 | `SSH_PORT` closed, port 22 filtered (Ubuntu 24.04) | `sshd_config` can say `Port 2222` while `ssh.socket` still listens on 22 — on the server: `systemctl restart ssh.socket ssh` (current `setup_v2.sh` configures the socket automatically). |
+| `cd /root/caddy_reverse: Permission denied` as deploy | `/root` is not traversable by non-root — use `/opt/caddy_reverse` (see README) or on the server: `sudo mv /root/caddy_reverse /opt/caddy_reverse && sudo chown -R deploy:deploy /opt/caddy_reverse`, then fix `update-stacks` path if needed. |
 | `permission denied` on docker | Use **deploy** (created by `setup_v2.sh`; in the `docker` group). |
 
 ## License
