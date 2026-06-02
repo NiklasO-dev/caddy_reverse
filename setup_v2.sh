@@ -377,9 +377,14 @@ fi
 # 16. App Deployment Template
 ###############################################################################
 info "Creating app deployment template..."
+if [[ -f "${REPO_ROOT}/stacks/_template/caddy.env.example" ]]; then
+  cp -f "${REPO_ROOT}/stacks/_template/caddy.env.example" /opt/stacks/_template/caddy.env.example
+fi
+
 cat > /opt/stacks/_template/compose.yml <<'EOF'
 # ──────────────────────────────────────────────────────────
-# App Template — copy this folder for each new application
+# App Template — folder name becomes https://<folder>.<APPS_DOMAIN>
+# After editing: sudo update-stacks && deploy-app <folder-name>
 # ──────────────────────────────────────────────────────────
 services:
   app:
