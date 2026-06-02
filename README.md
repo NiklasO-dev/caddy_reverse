@@ -50,7 +50,7 @@ git clone <this-repo-url> ~/caddy_reverse
 cd ~/caddy_reverse
 
 cp setup.env.example setup.env
-nano setup.env    # or vim — nano is installed by setup_v2.sh if still missing
+nano setup.env    # or vim; or edit locally and scp (see below)
 ```
 
 Fill in at least: `APPS_DOMAIN`, `ACME_EMAIL`, `SSH_PUBLIC_KEYS`, and optionally `CADDY_BASIC_AUTH_HASH` (see below).
@@ -141,13 +141,14 @@ cp setup.env.example setup.env
 nano setup.env
 ```
 
-| Variable | Purpose |
-|----------|---------|
-| `APPS_DOMAIN` | Base domain for apps, e.g. `apps.example.com` (wildcard `*.APPS_DOMAIN` → VPS) |
-| `ACME_EMAIL` | Let's Encrypt contact email |
-| `SSH_PUBLIC_KEYS` | Public keys for `setup_v2.sh` |
-| `NEW_USER`, `SSH_PORT`, `TIMEZONE` | Hardening options for `setup_v2.sh` |
-| `CADDY_BASIC_AUTH_USER` / `CADDY_BASIC_AUTH_HASH` | Shared Caddy basic auth |
+| Variable | When | Purpose |
+|----------|------|---------|
+| `APPS_DOMAIN` | Before `setup_v2.sh`; again on `update-stacks` | Base domain for apps, e.g. `apps.example.com` (wildcard `*.APPS_DOMAIN` → VPS) |
+| `ACME_EMAIL` | Before `setup_v2.sh`; again on `update-stacks` | Let's Encrypt contact email |
+| `CADDY_BASIC_AUTH_USER` | Before `setup_v2.sh`; again on `update-stacks` | Shared Caddy basic auth username |
+| `SSH_PUBLIC_KEYS` | Before `setup_v2.sh` only | Public keys for `NEW_USER` (`~/.ssh/authorized_keys`); root SSH is disabled after setup |
+| `NEW_USER`, `SSH_PORT`, `TIMEZONE` | Before `setup_v2.sh` only | Hardening options |
+| `CADDY_BASIC_AUTH_HASH` | Optional before; prompted after Docker if empty; again on `update-stacks` | Shared Caddy basic auth password (bcrypt) |
 
 Generate a bcrypt hash (on the VPS after Docker is installed, or on any machine with Docker):
 

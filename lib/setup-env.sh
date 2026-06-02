@@ -9,7 +9,7 @@ load_setup_env() {
     echo "Missing ${SETUP_ENV_FILE}" >&2
     echo "Create it from the example:" >&2
     echo "  cp setup.env.example setup.env" >&2
-    echo "  nano setup.env   # as root, before: bash setup_v2.sh" >&2
+    echo "  vim setup.env    # or edit locally and scp; then: bash setup_v2.sh" >&2
     exit 1
   fi
 
