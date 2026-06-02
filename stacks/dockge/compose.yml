@@ -1,0 +1,24 @@
+services:
+  dockge:
+    image: louislam/dockge:1
+    container_name: dockge
+    restart: unless-stopped
+    expose:
+      - "5001"
+    env_file:
+      - .env
+    environment:
+      - DOCKGE_STACKS_DIR=/opt/stacks
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/stacks:/opt/stacks
+      - dockge-data:/app/data
+    networks:
+      - caddy_net
+
+volumes:
+  dockge-data:
+
+networks:
+  caddy_net:
+    external: true

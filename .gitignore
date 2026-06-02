@@ -1,0 +1,17 @@
+# Local setup secrets (copy from setup.env.example)
+setup.env
+
+# Stack runtime env (generated on the server)
+.env
+.env.*
+!.env.example
+
+# Rendered from Caddyfile.example — do not commit
+stacks/caddy/Caddyfile
+
+# Keys and certs
+*.pem
+*.key
+id_rsa
+id_ed25519
+authorized_keys
